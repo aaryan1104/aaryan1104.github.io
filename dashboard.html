@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Subscription App</title>
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <h1>Choose a Plan</h1>
+  <form id="subscription-form">
+    <label for="plan">Select a Plan:</label>
+    <select id="plan" name="plan">
+      <option value="basic">Basic</option>
+      <option value="standard">Standard</option>
+      <option value="premium">Premium</option>
+    </select><br>
+
+    <label for="interval">Billing Interval:</label>
+    <select id="interval" name="interval">
+      <option value="monthly">Monthly</option>
+      <option value="yearly">Yearly</option>
+    </select><br>
+
+    <label for="card-element">Credit Card:</label>
+    <div id="card-element"></div><br>
+
+    <button type="submit">Subscribe</button>
+  </form>
+
+  <p id="message"></p>
+
+  <script>
+    // Set your Stripe publishable key here
+    const stripe = Stripe('YOUR_STRIPE_PUBLISHABLE_KEY');
+    const elements = stripe.elements();
+    const cardElement = elements.create('card');
+
+    cardElement.mount('#card-element');
+
+    const form = document.getElementById('subscription-form');
+    const message = document.getElementById('message');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const { token, error } = await stripe.createToken(cardElement);
+
+      if (error) {
+        message.textContent = error.message;
+      } else {
+        const response = await fetch('/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            plan: form.plan.value,
+            interval: form.interval.value,
+            token: token.id,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          message.textContent = `Successfully subscribed to ${data.subscription.plan.nickname} plan!`;
+        } else {
+          message.textContent = `Error: ${data.error}`;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
